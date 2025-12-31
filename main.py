@@ -4,11 +4,20 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database.database import engine, Base, get_db
 from pydantic import BaseModel
+from app.routers import auth, users
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="FastAPI Backend", version="1.0.0")
+app = FastAPI(
+    title="FastAPI Backend con Autenticación",
+    version="2.0.0",
+    description="API con sistema de autenticación JWT"
+)
+
+# Incluir routers
+app.include_router(auth.router)
+app.include_router(users.router)
 
 # Configurar CORS para permitir peticiones desde Firebase
 app.add_middleware(
