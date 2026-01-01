@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Default to SQLite if DATABASE_URL is not set
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sql_app.db")
+# Use /tmp for Cloud Run (writable directory)
+DEFAULT_SQLITE_PATH = "/tmp/sql_app.db" if os.path.exists("/tmp") else "./sql_app.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}")
 
 # SQLite needs special handling for threading
 connect_args = {}
