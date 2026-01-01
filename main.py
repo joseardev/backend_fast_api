@@ -11,7 +11,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="FastAPI Backend con Autenticación",
-    version="2.0.0",
+    version="2.0.1",
     description="API con sistema de autenticación JWT"
 )
 
