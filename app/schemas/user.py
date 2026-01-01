@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
-from app.models.models import UserRole
 
 # Schema para crear usuario (registro)
 class UserCreate(BaseModel):
@@ -19,7 +18,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     full_name: Optional[str]
-    role: UserRole
+    role: str  # Cambiado de UserRole a str para coincidir con el modelo
     is_active: bool
     created_at: datetime
 
