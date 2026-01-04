@@ -10,41 +10,19 @@ from pydantic import BaseModel
 # Importar routers básicos
 from app.routers import auth, users
 
-# Intentar importar router de telegram
+# NO importar router de telegram aquí - se hará en startup
 telegram_router_available = False
-try:
-    from app.routers import telegram
-    telegram_router_available = True
-    print("✅ Router de Telegram importado correctamente")
-except Exception as e:
-    print(f"⚠️ Router de Telegram no disponible: {e}")
-    import traceback
-    traceback.print_exc()
-
-# Create the database tables con manejo de errores
-try:
-    print("🗄️ Creando tablas de base de datos...")
-    Base.metadata.create_all(bind=engine)
-    print("✅ Tablas creadas correctamente")
-except Exception as e:
-    print(f"⚠️ Error al crear tablas (puede ser normal si ya existen): {e}")
-    import traceback
-    traceback.print_exc()
 
 app = FastAPI(
     title="FastAPI Backend con Autenticación",
-    version="2.0.3",
-    description="API con sistema de autenticación JWT y Bot de Telegram"
+    version="2.0.4",
+    description="API con sistema de autenticación JWT"
 )
 
-# Incluir routers básicos
+# Incluir routers básicos SIEMPRE
 app.include_router(auth.router)
 app.include_router(users.router)
-
-# Incluir router de telegram si está disponible
-if telegram_router_available:
-    app.include_router(telegram.router)
-    print("✅ Router de Telegram incluido en la aplicación")
+print("✅ Routers básicos incluidos")
 
 # Configurar CORS para permitir peticiones desde Firebase
 app.add_middleware(
@@ -110,38 +88,65 @@ async def startup_event():
     """Evento de inicio de la aplicación"""
     print("🚀 Iniciando aplicación FastAPI...")
 
-    # Configurar e iniciar bot de Telegram si las variables están configuradas
+    # Paso 1: Crear tablas básicas de autenticación
+    try:
+        print("🗄️ Creando tablas básicas de autenticación...")
+        # Solo crear tablas de User primero
+        from app.models.models import User
+        User.__table__.create(bind=engine, checkfirst=True)
+        print("✅ Tabla de usuarios verificada/creada")
+    except Exception as e:
+        print(f"⚠️ Info al crear tabla User (puede ya existir): {e}")
+
+    # Paso 2: Intentar cargar módulos de Telegram y crear sus tablas
     telegram_token = os.getenv("TELEGRAM_TOKEN")
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     chat_id_resumenes = os.getenv("TELEGRAM_CHAT_ID_RESUMENES")
 
     if telegram_token and gemini_api_key:
-        print("📱 Configurando bot de Telegram...")
+        print("📱 Configurando funcionalidad de Telegram...")
         try:
+            # Importar router de telegram
+            from app.routers import telegram as telegram_router
+            app.include_router(telegram_router.router)
+            print("✅ Router de Telegram incluido dinámicamente")
+
+            # Crear tablas de Telegram
+            from app.models.models import LogMensaje, Pedido, HistorialEstado, NotificacionEnviada
+            try:
+                print("🗄️ Creando tablas de Telegram...")
+                LogMensaje.__table__.create(bind=engine, checkfirst=True)
+                Pedido.__table__.create(bind=engine, checkfirst=True)
+                HistorialEstado.__table__.create(bind=engine, checkfirst=True)
+                NotificacionEnviada.__table__.create(bind=engine, checkfirst=True)
+                print("✅ Tablas de Telegram verificadas/creadas")
+            except Exception as table_error:
+                print(f"⚠️ Error al crear tablas de Telegram (pueden ya existir): {table_error}")
+
             # Importar módulos del bot
             from app.telegram.bot import start_bot
             from app.telegram.scheduler import start_scheduler
 
-            # Iniciar bot en background con manejo de errores
+            # Iniciar bot en background
             try:
                 asyncio.create_task(start_bot(telegram_token, gemini_api_key))
                 print("✅ Bot de Telegram iniciado en background")
             except Exception as bot_error:
-                print(f"⚠️ Error al iniciar bot (continuando): {bot_error}")
+                print(f"⚠️ Error al iniciar bot: {bot_error}")
 
-            # Iniciar scheduler de tareas programadas
+            # Iniciar scheduler
             try:
                 start_scheduler(telegram_token, chat_id_resumenes)
                 print("✅ Scheduler iniciado correctamente")
             except Exception as scheduler_error:
-                print(f"⚠️ Error al iniciar scheduler (continuando): {scheduler_error}")
+                print(f"⚠️ Error al iniciar scheduler: {scheduler_error}")
 
         except Exception as e:
-            print(f"⚠️ Error al importar módulos de Telegram (continuando): {e}")
+            print(f"⚠️ Funcionalidad de Telegram no disponible: {e}")
             import traceback
             traceback.print_exc()
     else:
-        print("⚠️ Bot de Telegram no configurado (faltan variables TELEGRAM_TOKEN o GEMINI_API_KEY)")
+        print("⚠️ Bot de Telegram no configurado (variables TELEGRAM_TOKEN/GEMINI_API_KEY no definidas)")
 
     print("✅ Aplicación FastAPI iniciada correctamente")
 
