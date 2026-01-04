@@ -6,21 +6,45 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database.database import engine, Base, get_db
 from pydantic import BaseModel
-from app.routers import auth, users, telegram
 
-# Create the database tables
-Base.metadata.create_all(bind=engine)
+# Importar routers básicos
+from app.routers import auth, users
+
+# Intentar importar router de telegram
+telegram_router_available = False
+try:
+    from app.routers import telegram
+    telegram_router_available = True
+    print("✅ Router de Telegram importado correctamente")
+except Exception as e:
+    print(f"⚠️ Router de Telegram no disponible: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Create the database tables con manejo de errores
+try:
+    print("🗄️ Creando tablas de base de datos...")
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tablas creadas correctamente")
+except Exception as e:
+    print(f"⚠️ Error al crear tablas (puede ser normal si ya existen): {e}")
+    import traceback
+    traceback.print_exc()
 
 app = FastAPI(
     title="FastAPI Backend con Autenticación",
-    version="2.0.2",
-    description="API con sistema de autenticación JWT"
+    version="2.0.3",
+    description="API con sistema de autenticación JWT y Bot de Telegram"
 )
 
-# Incluir routers
+# Incluir routers básicos
 app.include_router(auth.router)
 app.include_router(users.router)
-app.include_router(telegram.router)
+
+# Incluir router de telegram si está disponible
+if telegram_router_available:
+    app.include_router(telegram.router)
+    print("✅ Router de Telegram incluido en la aplicación")
 
 # Configurar CORS para permitir peticiones desde Firebase
 app.add_middleware(
