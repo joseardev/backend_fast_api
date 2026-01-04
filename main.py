@@ -98,15 +98,24 @@ async def startup_event():
             from app.telegram.bot import start_bot
             from app.telegram.scheduler import start_scheduler
 
-            # Iniciar bot en background
-            asyncio.create_task(start_bot(telegram_token, gemini_api_key))
+            # Iniciar bot en background con manejo de errores
+            try:
+                asyncio.create_task(start_bot(telegram_token, gemini_api_key))
+                print("✅ Bot de Telegram iniciado en background")
+            except Exception as bot_error:
+                print(f"⚠️ Error al iniciar bot (continuando): {bot_error}")
 
             # Iniciar scheduler de tareas programadas
-            start_scheduler(telegram_token, chat_id_resumenes)
+            try:
+                start_scheduler(telegram_token, chat_id_resumenes)
+                print("✅ Scheduler iniciado correctamente")
+            except Exception as scheduler_error:
+                print(f"⚠️ Error al iniciar scheduler (continuando): {scheduler_error}")
 
-            print("✅ Bot de Telegram y scheduler iniciados correctamente")
         except Exception as e:
-            print(f"❌ Error al iniciar bot de Telegram: {e}")
+            print(f"⚠️ Error al importar módulos de Telegram (continuando): {e}")
+            import traceback
+            traceback.print_exc()
     else:
         print("⚠️ Bot de Telegram no configurado (faltan variables TELEGRAM_TOKEN o GEMINI_API_KEY)")
 
