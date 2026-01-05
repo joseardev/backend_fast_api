@@ -37,8 +37,13 @@ class UserResponse(BaseModel):
 # Schema para el token JWT
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
     user: UserResponse
+
+# Schema para refresh token request
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 # Schema para actualizar perfil
 class UserUpdate(BaseModel):
@@ -49,3 +54,8 @@ class UserUpdate(BaseModel):
 class PasswordChange(BaseModel):
     old_password: str
     new_password: str
+
+# Schema para registrar token de notificaciones push
+class PushTokenRegister(BaseModel):
+    fcm_token: Optional[str] = None
+    apns_token: Optional[str] = None

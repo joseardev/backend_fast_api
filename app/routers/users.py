@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.models import User
-from app.schemas.user import UserResponse, UserUpdate, PasswordChange
+from app.schemas.user import UserResponse, UserUpdate, PasswordChange, PushTokenRegister
 from app.auth.jwt import get_current_active_user
 from app.auth.password import hash_password, verify_password
 
@@ -77,3 +77,42 @@ async def get_user_by_id(
             detail="Usuario no encontrado"
         )
     return user
+
+
+@router.post("/me/register-push-token")
+async def register_push_token(
+    token_data: PushTokenRegister,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Registrar token de notificaciones push (FCM para Android/iOS o APNS para iOS)
+    """
+    if token_data.fcm_token:
+        current_user.fcm_token = token_data.fcm_token
+
+    if token_data.apns_token:
+        current_user.apns_token = token_data.apns_token
+
+    db.commit()
+
+    return {
+        "message": "Token de notificaciones push registrado exitosamente",
+        "fcm_registered": token_data.fcm_token is not None,
+        "apns_registered": token_data.apns_token is not None
+    }
+
+
+@router.delete("/me/push-token")
+async def unregister_push_token(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Eliminar tokens de notificaciones push (al cerrar sesión)
+    """
+    current_user.fcm_token = None
+    current_user.apns_token = None
+    db.commit()
+
+    return {"message": "Tokens de notificaciones eliminados exitosamente"}

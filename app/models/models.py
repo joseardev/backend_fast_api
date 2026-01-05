@@ -17,13 +17,22 @@ class User(Base):
     full_name = Column(String, nullable=True)
     role = Column(String, default="user", nullable=False)
     is_active = Column(Boolean, default=True)
+    is_email_verified = Column(Boolean, default=False)
+    email_verification_token = Column(String, nullable=True)
     telegram_id = Column(BigInteger, nullable=True, unique=True, index=True)
     telegram_username = Column(String, nullable=True)
+
+    # Push notifications
+    fcm_token = Column(String, nullable=True)  # Firebase Cloud Messaging (Android/iOS)
+    apns_token = Column(String, nullable=True)  # Apple Push Notification Service
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relaciones
     pedidos = relationship("Pedido", back_populates="usuario")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    filtros_guardados = relationship("FiltroGuardado", back_populates="usuario", cascade="all, delete-orphan")
 
 
 # Enums para Telegram
@@ -99,6 +108,8 @@ class Pedido(Base):
     # Relaciones
     usuario = relationship("User", back_populates="pedidos")
     historial = relationship("HistorialEstado", back_populates="pedido", cascade="all, delete-orphan")
+    imagenes = relationship("ImagenPedido", back_populates="pedido", cascade="all, delete-orphan")
+    comentarios = relationship("ComentarioPedido", back_populates="pedido", cascade="all, delete-orphan")
 
 
 # Modelo para auditoría de cambios de estado
@@ -130,3 +141,65 @@ class NotificacionEnviada(Base):
     exitoso = Column(Boolean, default=True)
     error = Column(Text, nullable=True)
     fecha_envio = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ==================== NUEVOS MODELOS ====================
+
+# Modelo para Refresh Tokens
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relación
+    user = relationship("User", back_populates="refresh_tokens")
+
+
+# Modelo para Imágenes de Pedidos
+class ImagenPedido(Base):
+    __tablename__ = "imagenes_pedidos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
+    url = Column(String, nullable=False)
+    filename = Column(String, nullable=False)
+    size_bytes = Column(Integer, nullable=True)
+    mime_type = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relación
+    pedido = relationship("Pedido", back_populates="imagenes")
+
+
+# Modelo para Comentarios en Pedidos
+class ComentarioPedido(Base):
+    __tablename__ = "comentarios_pedidos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    comentario = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relación
+    pedido = relationship("Pedido", back_populates="comentarios")
+
+
+# Modelo para Filtros Guardados
+class FiltroGuardado(Base):
+    __tablename__ = "filtros_guardados"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    nombre = Column(String, nullable=False)
+    filtros_json = Column(Text, nullable=False)  # JSON con los filtros
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relación
+    usuario = relationship("User", back_populates="filtros_guardados")

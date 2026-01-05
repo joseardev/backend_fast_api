@@ -8,21 +8,23 @@ from app.database.database import engine, Base, get_db
 from pydantic import BaseModel
 
 # Importar routers básicos
-from app.routers import auth, users
+from app.routers import auth, users, pedidos_extended, websockets
 
 # NO importar router de telegram aquí - se hará en startup
 telegram_router_available = False
 
 app = FastAPI(
-    title="FastAPI Backend con Autenticación",
-    version="2.0.4",
-    description="API con sistema de autenticación JWT"
+    title="FastAPI Backend con Autenticación y Pedidos",
+    version="3.0.0",
+    description="API completa con autenticación JWT, gestión de pedidos, WebSockets y notificaciones push"
 )
 
 # Incluir routers básicos SIEMPRE
 app.include_router(auth.router)
 app.include_router(users.router)
-print("✅ Routers básicos incluidos")
+app.include_router(pedidos_extended.router)
+app.include_router(websockets.router)
+print("✅ Routers básicos incluidos (auth, users, pedidos_extended, websockets)")
 
 # Configurar CORS para permitir peticiones desde Firebase
 app.add_middleware(
@@ -88,15 +90,19 @@ async def startup_event():
     """Evento de inicio de la aplicación"""
     print("🚀 Iniciando aplicación FastAPI...")
 
-    # Paso 1: Crear tablas básicas de autenticación
+    # Paso 1: Crear todas las tablas del sistema
     try:
-        print("🗄️ Creando tablas básicas de autenticación...")
-        # Solo crear tablas de User primero
-        from app.models.models import User
+        print("🗄️ Creando/verificando tablas del sistema...")
+        from app.models.models import (
+            User, RefreshToken, ImagenPedido, ComentarioPedido,
+            FiltroGuardado
+        )
+        # Crear tablas básicas
         User.__table__.create(bind=engine, checkfirst=True)
-        print("✅ Tabla de usuarios verificada/creada")
+        RefreshToken.__table__.create(bind=engine, checkfirst=True)
+        print("✅ Tablas de usuarios y autenticación verificadas/creadas")
     except Exception as e:
-        print(f"⚠️ Info al crear tabla User (puede ya existir): {e}")
+        print(f"⚠️ Info al crear tablas base (pueden ya existir): {e}")
 
     # Paso 2: Intentar cargar módulos de Telegram y crear sus tablas
     telegram_token = os.getenv("TELEGRAM_TOKEN")
@@ -111,15 +117,21 @@ async def startup_event():
             app.include_router(telegram_router.router)
             print("✅ Router de Telegram incluido dinámicamente")
 
-            # Crear tablas de Telegram
-            from app.models.models import LogMensaje, Pedido, HistorialEstado, NotificacionEnviada
+            # Crear tablas de Telegram y pedidos extendidos
+            from app.models.models import (
+                LogMensaje, Pedido, HistorialEstado, NotificacionEnviada,
+                ImagenPedido, ComentarioPedido, FiltroGuardado
+            )
             try:
-                print("🗄️ Creando tablas de Telegram...")
+                print("🗄️ Creando tablas de Telegram y pedidos...")
                 LogMensaje.__table__.create(bind=engine, checkfirst=True)
                 Pedido.__table__.create(bind=engine, checkfirst=True)
                 HistorialEstado.__table__.create(bind=engine, checkfirst=True)
                 NotificacionEnviada.__table__.create(bind=engine, checkfirst=True)
-                print("✅ Tablas de Telegram verificadas/creadas")
+                ImagenPedido.__table__.create(bind=engine, checkfirst=True)
+                ComentarioPedido.__table__.create(bind=engine, checkfirst=True)
+                FiltroGuardado.__table__.create(bind=engine, checkfirst=True)
+                print("✅ Tablas de Telegram y pedidos verificadas/creadas")
             except Exception as table_error:
                 print(f"⚠️ Error al crear tablas de Telegram (pueden ya existir): {table_error}")
 
