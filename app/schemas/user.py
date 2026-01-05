@@ -59,3 +59,34 @@ class PasswordChange(BaseModel):
 class PushTokenRegister(BaseModel):
     fcm_token: Optional[str] = None
     apns_token: Optional[str] = None
+
+
+# ===== SCHEMAS PARA ADMINISTRACIÓN =====
+
+# Schema para actualización de usuario por admin
+class UserAdminUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None  # user, staff, admin
+    is_active: Optional[bool] = None
+
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, v):
+        if v is not None and v not in ['user', 'staff', 'admin']:
+            raise ValueError('El rol debe ser: user, staff o admin')
+        return v
+
+
+# Schema para cambio de contraseña por admin
+class AdminPasswordChange(BaseModel):
+    new_password: str
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) > 72:
+            raise ValueError('La contraseña no puede tener más de 72 caracteres')
+        if len(v) < 6:
+            raise ValueError('La contraseña debe tener al menos 6 caracteres')
+        return v
