@@ -90,19 +90,26 @@ async def startup_event():
     """Evento de inicio de la aplicación"""
     print("🚀 Iniciando aplicación FastAPI...")
 
-    # Paso 1: Crear todas las tablas del sistema
+    # Paso 1: Crear todas las tablas del sistema (SIEMPRE)
     try:
-        print("🗄️ Creando/verificando tablas del sistema...")
+        print("🗄️ Creando/verificando todas las tablas del sistema...")
         from app.models.models import (
             User, RefreshToken, ImagenPedido, ComentarioPedido,
-            FiltroGuardado
+            FiltroGuardado, LogMensaje, Pedido, HistorialEstado, NotificacionEnviada
         )
-        # Crear tablas básicas
+        # Crear todas las tablas
         User.__table__.create(bind=engine, checkfirst=True)
         RefreshToken.__table__.create(bind=engine, checkfirst=True)
-        print("✅ Tablas de usuarios y autenticación verificadas/creadas")
+        ImagenPedido.__table__.create(bind=engine, checkfirst=True)
+        ComentarioPedido.__table__.create(bind=engine, checkfirst=True)
+        FiltroGuardado.__table__.create(bind=engine, checkfirst=True)
+        LogMensaje.__table__.create(bind=engine, checkfirst=True)
+        Pedido.__table__.create(bind=engine, checkfirst=True)
+        HistorialEstado.__table__.create(bind=engine, checkfirst=True)
+        NotificacionEnviada.__table__.create(bind=engine, checkfirst=True)
+        print("✅ Todas las tablas verificadas/creadas exitosamente")
     except Exception as e:
-        print(f"⚠️ Info al crear tablas base (pueden ya existir): {e}")
+        print(f"⚠️ Error al crear tablas (pueden ya existir): {e}")
 
     # Paso 2: Intentar cargar módulos de Telegram y crear sus tablas
     telegram_token = os.getenv("TELEGRAM_TOKEN")
@@ -116,24 +123,6 @@ async def startup_event():
             from app.routers import telegram as telegram_router
             app.include_router(telegram_router.router)
             print("✅ Router de Telegram incluido dinámicamente")
-
-            # Crear tablas de Telegram y pedidos extendidos
-            from app.models.models import (
-                LogMensaje, Pedido, HistorialEstado, NotificacionEnviada,
-                ImagenPedido, ComentarioPedido, FiltroGuardado
-            )
-            try:
-                print("🗄️ Creando tablas de Telegram y pedidos...")
-                LogMensaje.__table__.create(bind=engine, checkfirst=True)
-                Pedido.__table__.create(bind=engine, checkfirst=True)
-                HistorialEstado.__table__.create(bind=engine, checkfirst=True)
-                NotificacionEnviada.__table__.create(bind=engine, checkfirst=True)
-                ImagenPedido.__table__.create(bind=engine, checkfirst=True)
-                ComentarioPedido.__table__.create(bind=engine, checkfirst=True)
-                FiltroGuardado.__table__.create(bind=engine, checkfirst=True)
-                print("✅ Tablas de Telegram y pedidos verificadas/creadas")
-            except Exception as table_error:
-                print(f"⚠️ Error al crear tablas de Telegram (pueden ya existir): {table_error}")
 
             # Importar módulos del bot
             from app.telegram.bot import start_bot
